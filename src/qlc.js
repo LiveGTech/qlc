@@ -8,10 +8,29 @@
 */
 
 const fs = require("fs");
+const path = require("path");
 const BSON = require("bson");
 
 const FORMAT_VERSION = 0;
 const HEADER_BUFFER = Buffer.from([0x51, 0x4C, 0x43, FORMAT_VERSION]); // Starts with magic `"QLC"`
+
+function traverseFolder(pathBase, pathString = ".") {
+    var files = [];
+    var list = fs.readdirSync(path.join(pathBase, pathString));
+
+    list.forEach(function(file) {
+        var childPath = path.join(pathString, file);
+        var stat = fs.statSync(path.join(pathBase, childPath));
+
+        if (stat.isDirectory()) {
+            files.push(...traverseFolder(pathBase, childPath));
+        } else {
+            files.push(childPath);
+        }
+    });
+
+    return files;
+}
 
 exports.Collection = class {
     static loadFromBuffer(buffer) {
@@ -22,9 +41,9 @@ exports.Collection = class {
         });
     }
 
-    static loadFromFile(path) {
+    static loadFromFile(pathString) {
         return new Promise(function(resolve, reject) {
-            fs.open(path, "r", function(error, fd) {
+            fs.open(pathString, "r", function(error, fd) {
                 if (error) {
                     reject(error);
 
@@ -38,6 +57,21 @@ exports.Collection = class {
                 });
             })
         });
+
+        return instance.load().then(function() {
+            return Promise.resolve(instance);
+        });
+    }
+
+    static loadFromFolder(pathString) {
+        var files = traverseFolder(pathString);
+        var data = {};
+
+        files.forEach(function(filePath) {
+            data[filePath] = fs.readFileSync(path.join(pathString, filePath));
+        });
+
+        var instance = new exports.ObjectCollection(data);
 
         return instance.load().then(function() {
             return Promise.resolve(instance);
@@ -83,10 +117,10 @@ exports.Collection = class {
         });
     }
 
-    saveToFile(path) {
+    saveToFile(pathString) {
         return this.encode().then(function(buffer) {
             return new Promise(function(resolve, reject) {
-                fs.writeFile(path, buffer, function(error) {
+                fs.writeFile(pathString, buffer, function(error) {
                     if (error) {
                         reject(error);
 
@@ -112,6 +146,10 @@ exports.ObjectCollection = class extends exports.Collection {
     }
 
     getData(key) {
+        if (!(key in this.data)) {
+            return Promise.resolve(null);
+        }
+
         return Promise.resolve(this.data[key]);
     }
 };
@@ -137,6 +175,10 @@ exports.DecodedCollection = class extends exports.Collection {
     }
 
     getData(key) {
+        if (!this.index[key]) {
+            return Promise.resolve(null);
+        }
+
         return this.readBytes(this.offset + this.index[key].p, this.index[key].l);
     }
 
