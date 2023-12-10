@@ -1,0 +1,11 @@
+{
+    "name": "qlc",
+    "version": "0.1.0",
+    "description": "Quick Lookup Collections; a read-only archive format for efficient file retrieval.",
+    "main": "qlc.js",
+    "author": "LiveG Technologies",
+    "repository": "https://github.com/LiveGTech/qlc",
+    "dependencies": {
+        "bson": "^6.2.0"
+    }
+}
