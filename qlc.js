@@ -7,12 +7,43 @@
     Licensed by the LiveG Open-Source Licence, which can be found at LICENCE.md.
 */
 
+const fs = require("fs");
 const BSON = require("bson");
 
 const FORMAT_VERSION = 0;
 const HEADER_BUFFER = Buffer.from([0x51, 0x4C, 0x43, FORMAT_VERSION]); // Starts with magic `"QLC"`
 
 exports.Collection = class {
+    static loadFromBuffer(buffer) {
+        var instance = new exports.BufferCollection(buffer);
+
+        return instance.load().then(function() {
+            return Promise.resolve(instance);
+        });
+    }
+
+    static loadFromFile(path) {
+        return new Promise(function(resolve, reject) {
+            fs.open(path, "r", function(error, fd) {
+                if (error) {
+                    reject(error);
+
+                    return;
+                }
+
+                var instance = new exports.FileCollection(fd);
+
+                instance.load().then(function() {
+                    resolve(instance);
+                });
+            })
+        });
+
+        return instance.load().then(function() {
+            return Promise.resolve(instance);
+        });
+    }
+
     load() {
         return Promise.resolve();
     }
@@ -50,6 +81,22 @@ exports.Collection = class {
 
             return Promise.resolve(Buffer.concat(dataChunks));
         });
+    }
+
+    saveToFile(path) {
+        return this.encode().then(function(buffer) {
+            return new Promise(function(resolve, reject) {
+                fs.writeFile(path, buffer, function(error) {
+                    if (error) {
+                        reject(error);
+
+                        return;
+                    }
+
+                    resolve();
+                });
+            });
+        })
     }
 };
 
@@ -118,3 +165,29 @@ exports.BufferCollection = class extends exports.DecodedCollection {
         return Promise.resolve(this.buffer.slice(offset, offset + length));
     }
 };
+
+exports.FileCollection = class extends exports.DecodedCollection {
+    constructor(fd) {
+        super();
+
+        this.fd = fd;
+    }
+
+    readBytes(offset, length) {
+        var thisScope = this;
+
+        return new Promise(function(resolve, reject) {
+            var buffer = Buffer.alloc(length);
+
+            fs.read(thisScope.fd, buffer, 0, length, offset, function(error) {
+                if (error) {
+                    rejcet(error);
+
+                    return;
+                }
+
+                resolve(buffer);
+            })
+        });
+    }
+}

@@ -21,6 +21,7 @@ var oc = new qlc.ObjectCollection(TEST_DATA);
 var ocBuffer;
 
 var bc;
+var fc;
 
 oc.load().then(function() {
     return oc.encode();
@@ -29,10 +30,10 @@ oc.load().then(function() {
 
     console.log("OC buffer:", ocBuffer);
 
-    bc = new qlc.BufferCollection(buffer);
+    return qlc.Collection.loadFromBuffer(buffer);
+}).then(function(collection) {
+    bc = collection;
 
-    return bc.load();
-}).then(function() {
     return bc.getData("fifth");
 }).then(function(fifthData) {
     console.log("Decoded data:", fifthData);
@@ -41,5 +42,18 @@ oc.load().then(function() {
     return bc.encode();
 }).then(function(bcBuffer) {
     console.log("BC buffer:", bcBuffer);
-    console.assert(ocBuffer.equals(bcBuffer));
+    console.assert(bcBuffer.equals(ocBuffer));
+
+    return oc.saveToFile("test.qlc");
+}).then(function() {
+    console.log("Saved to file");
+
+    return qlc.Collection.loadFromFile("test.qlc");
+}).then(function(collection) {
+    fc = collection;
+
+    return fc.encode();
+}).then(function(fcBuffer) {
+    console.log("FC buffer:", fcBuffer);
+    console.assert(fcBuffer.equals(ocBuffer));
 });
