@@ -1,5 +1,5 @@
 {
-    "name": "qlc",
+    "name": "@liveg/qlc",
     "version": "0.1.0",
     "description": "Quick Lookup Collections; a read-only archive format for efficient file retrieval.",
     "main": "src/qlc.js",
